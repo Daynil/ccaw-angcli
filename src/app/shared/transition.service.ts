@@ -12,9 +12,7 @@ export class TransitionService {
   }
 
   transition() {
-    if (this.transitioning) {
-      this.transitioning = false;
-    }
+    if (this.transitioning) this.transitioning = false;
     this.transitioning = true;
     setTimeout(() => this.transitioning = false, 600);
   }
