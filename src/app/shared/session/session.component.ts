@@ -1,16 +1,19 @@
 import { Component, OnInit, OnDestroy, ViewChild, ElementRef } from '@angular/core';
 import { BehaviorSubject } from 'rxjs/BehaviorSubject';
+import { NgForm } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
 import * as _ from 'lodash';
 
 import { tags } from '../tags.data';
 import { AdminService } from '../admin.service';
 import { AuthService } from '../auth.service';
-import { TimeSlot } from '../conference.model';
+import { Conference, TimeSlot } from '../conference.model';
+import { DatePipe } from '../date.pipe';
 import { DateService } from '../date.service';
 import { Speaker } from '../speaker.model';
 import { SessionService } from '../session.service';
 import { SpeakerService } from '../speaker.service';
+import { TimePipe } from '../time.pipe';
 import { TransitionService } from '../transition.service';
 import { ToastComponent } from '../toast.component';
 import { Session } from '../session.model';
@@ -44,8 +47,7 @@ export class SessionComponent implements OnInit, OnDestroy {
   tags = tags;
 
   presentationTypeLabel = `
-    *Please note that case studies MUST be presented by at least two parties involved in the case, 
-    one of which must be the investigator and/or prosecutor. Additional co-presenters are welcome.
+    *Please note that case studies MUST be presented by at least two parties involved in the case, one of which must be the investigator and/or prosecutor. Additional co-presenters are welcome.
 
     Examples of Acceptable Co-Presenters:
     - Prosecutor + investigator
@@ -75,9 +77,7 @@ export class SessionComponent implements OnInit, OnDestroy {
       if (!params['id']) {
         // Initialize default values for fields that need it
         this.tags.forEach(tag => {
-          if (tag.checked) {
-            tag.checked = false;
-          }
+          if (tag.checked) tag.checked = false;
         });
         this.model = <Session>{
           approval: 'pending',
@@ -92,9 +92,8 @@ export class SessionComponent implements OnInit, OnDestroy {
       }
       // If a speaker is submitting, set him as lead presenter
       if (params['leadPresId']) {
-        if (this.model.speakers) {
-          this.model.speakers.mainPresenter = params['leadPresId'];
-        } else {
+        if (this.model.speakers) this.model.speakers.mainPresenter = params['leadPresId'];
+        else {
           this.model.speakers = {
             mainPresenter: params['leadPresId'],
             coPresenters: []
@@ -126,11 +125,8 @@ export class SessionComponent implements OnInit, OnDestroy {
   }
 
   getPart(occurrence) {
-    if (this.model.length === '90') {
-      return '';
-    } else {
-      return `Part ${occurrence.part}: `;
-    }
+    if (this.model.length === '90') return '';
+    else return `Part ${occurrence.part}: `
   }
 
   getDate(occurrence) {
@@ -181,11 +177,11 @@ export class SessionComponent implements OnInit, OnDestroy {
         .then((res: any) => {
           if (res.occupied) {
             this.toast.error('Time/room slot is occupied! Clear it first to add new session.')
-          } else if (res.alreadyScheduled) {
-            this.toast.error('This session is already scheduled in a room for this time slot.')
-          } else {
-            this.toast.success('Session assigned to slot');
           }
+          else if (res.alreadyScheduled) {
+            this.toast.error('This session is already scheduled in a room for this time slot.')
+          }
+          else this.toast.success('Session assigned to slot');
         });
   }
 
@@ -193,7 +189,7 @@ export class SessionComponent implements OnInit, OnDestroy {
     let slot = this.adminService.findSlotById(occurrence.timeSlot);
     this.sessionService.clearSlotSession(slot, occurrence.room)
         .then((res: any) => {
-          if (res !== 'No scheduled session') {
+          if (res != 'No scheduled session') {
             if (res.errMsg) {
               this.toast.error(res.errMsg);
             } else {
@@ -214,9 +210,7 @@ export class SessionComponent implements OnInit, OnDestroy {
   }
 
   removeSpeaker(speakerId: string) {
-    if (speakerId === 'main') {
-      speakerId = this.model.speakers.mainPresenter;
-    }
+    if (speakerId === 'main') speakerId = this.model.speakers.mainPresenter;
     this.sessionService.removeSpeaker(speakerId, this.model._id)
         .then(res => {
           this.toast.success('Speaker removed');
@@ -242,44 +236,34 @@ export class SessionComponent implements OnInit, OnDestroy {
     this.sessionService
         .updateSession(this.model)
         .then(res => {
-          if (!this.authService.user.getValue().admin) {
-            this.router.navigate(['/dashboard', { msg: 'Presentation proposal saved!' }]);
-          }
+          if (!this.authService.user.getValue().admin) this.router.navigate(['/dashboard', { msg: 'Presentation proposal saved!' }]);
         });
+        // .then(res => this.toast.success('Session updated!'));
   }
 
   checkSession(form: any) {
-    let flag = true;
+    var flag = true;
 
     this.requiredSessionFields.forEach(item => {
       if (item === 'avNeeds') {
         if (form['hasAVneeds'] === 'yes') {
-          if (!form['avNeeds']) {
-            flag = false;
-          }
+          if (!form['avNeeds']) flag = false;
         }
       } else {
         if (typeof form[item] !== undefined) {
+          // If type is boolean, form item is completed
           if (typeof form[item] !== 'boolean') {
-            if (!form[item]) {
-              flag = false;
-            }
+            if (!form[item]) flag = false;
           }
-        } else {
-          flag = false;
-        }
+        } else flag = false;
       }
     });
 
     let atLeastOne = false;
     this.model.tags.forEach(tag => {
-      if (tag.checked) {
-        atLeastOne = true;
-      }
+      if (tag.checked) atLeastOne = true;
     });
-    if (!atLeastOne) {
-      flag = false;
-    }
+    if (!atLeastOne) flag = false;
 
     return flag;
   }
@@ -293,15 +277,12 @@ export class SessionComponent implements OnInit, OnDestroy {
   }
 
   email() {
-    window.open('mailto:bmeyer@genesisshelter.org');
+    window.open("mailto:bmeyer@genesisshelter.org");
   }
 
   willingToRepeatComplete(): boolean {
-    if (typeof this.model.willingToRepeat === 'boolean') {
-      return true;
-    } else {
-      return false;
-    }
+    if (typeof this.model.willingToRepeat === 'boolean') return true;
+    else return false;
   }
 
 }
